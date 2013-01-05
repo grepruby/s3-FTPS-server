@@ -1,0 +1,12 @@
+GEM
+  remote: http://rubygems.org/
+  specs:
+    em-ftpd (0.0.1)
+      eventmachine (~> 1.0.0.beta1)
+    eventmachine (1.0.0)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  em-ftpd
