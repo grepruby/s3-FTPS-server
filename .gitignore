@@ -1,0 +1,16 @@
+.*.sw[a-z]
+*.un~
+Session.vim
+.netrwhist
+
+.*
+!.gitignore
+*~
+
+# Ignore tags created by etags and ctags
+TAGS
+!TAGS/
+tags
+!tags/
+
+
