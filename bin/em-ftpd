@@ -1,0 +1,21 @@
+#!/usr/bin/env /home/wendi/.rvm/bin/ruby-1.9.3-p327
+
+# Boot an S3-backend FTPS server
+#
+# Usage:
+#
+#   em-ftpd config.rb
+
+$:.unshift(File.expand_path('../../lib', __FILE__))
+require 'eventmachine'
+require 'em-ftpd'
+require 's3-FTPS-server'
+
+config_file = ARGV.first
+
+if config_file && File.file?(config_file)
+  EM::FTPD::App.start(config_file)
+else
+  $stderr.puts "USAGE: em-ftpd <config.rb>"
+  exit 1
+end

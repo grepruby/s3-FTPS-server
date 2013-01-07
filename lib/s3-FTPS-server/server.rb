@@ -1,6 +1,14 @@
+require 'pry'
 module EM::FTPD
 
   class Server < EM::Connection
+
+    include EM::Protocols::LineProtocol
+    include Authentication
+    include Directories
+    include Files
+
+    COMMANDS.push 'auth', 'feat', 'pbsz', 'prot'
 
     def post_init
       @tls_state = :none
@@ -21,16 +29,19 @@ module EM::FTPD
     #   should respond with reply code 504.
     #
     def cmd_auth(arg)
-       if arg =~ /^tls$/i
-         @tls_state = :authed
-         str = "234- Accept security mechanism: TLS"
-       else
-         str = "504- Do not understand security mechanism: '#{arg}' "
-       end
-       send_response(str)
+      puts "auth args: #{arg}"
+      if arg =~ /^tls$/i
+        @tls_state = :authed
+        str = "234- Accept security mechanism: TLS"
+      else
+        str = "504- Do not understand security mechanism: '#{arg}' "
+      end
+      send_response(str)
     end
 
-    def cmd_feat
+    def cmd_feat(arg)
+      p "======"
+      p arg
       str = "211- Supported features:#{LBRK}"
       features = %w{ AUTH PBSZ PROT }
       features.each do |feat|

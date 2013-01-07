@@ -8,6 +8,8 @@
 #   em-ftpd examples/fake.rb
 
 class FTPSDriver
+  FILE_ONE = "This is the first file available for download.\n\nBy James"
+  FILE_TWO = "This is the file number two.\n\n2009-03-21"
 
   def change_dir(path, &block)
     yield path == "/" || path == "/files"
@@ -83,7 +85,7 @@ end
 
 # configure the server
 driver     FTPSDriver
-port       10001
+# port       7979
 #driver_args 1, 2, 3
 #user      "ftp"
 #group     "ftp"
