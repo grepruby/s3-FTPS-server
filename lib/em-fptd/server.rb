@@ -4,7 +4,6 @@ module EM::FTPD
 
     def post_init
       @tls_state = :none
-      @pbsz = -1
       @mode   = :binary
       @name_prefix = "/"
 
@@ -20,9 +19,6 @@ module EM::FTPD
     #   code 234.
     # * If the server does not understand the named security mechanism, it
     #   should respond with reply code 504.
-    #
-    # * If accepted, removes any state associated with prior FTP Security
-    #   commands.
     #
     def cmd_auth(arg)
        if arg =~ /^tls$/i
@@ -49,33 +45,29 @@ module EM::FTPD
     # The PBSZ command must be preceded by a successful security data
     # exchange.
     #
-    # * If the server cannot parse the argument, or if it will not fit in
-    # 32 bits, it should respond with a 501 reply code.
-    #
     # * If the server has not completed a security data exchange with the
-    # client, it should respond with a 503 reply code.
+    #   client, it should respond with a 503 reply code.
+    # * If the server cannot parse the argument, or if it will not fit in
+    #   32 bits, it should respond with a 501 reply code.
     #
-    # OPTIONAL
-    #   If the size provided by the client is too large for the server, it must
-    #   use a string of the form "PBSZ=number" in the text part of the
-    #   reply to indicate a smaller buffer size.  The client and the
-    #   server must use the smaller of the two buffer sizes if both buffer
-    #   sizes are specified.
     MAX_PBSZ = 2**32 - 1
     def cmd_pbsz(arg)
-      # test if arg is a Fixnum of String
-      puts arg
+      puts "==test if arg is a Fixnum of String=="
+      puts arg.class
 
       if @tls_state != :authed
         str = '503- Need AUTH preceded'
       else
-        pbsz = arg.to_i
-        if pbsz >= 0 && pbsz <= MAX_PBSZ
+        if arg == '0'
           @tls_state = :pbszed
-          str = '200- Success negotiated a maximun protected buffer size'
-          @pbsz = pbsz
+          str = '200- Success negotiated, no buffering is taking place'
         else
-          str = '501- Cannot parse the argument (should between 0 and 2^32-1)'
+          pbsz = arg.to_i
+          if pbsz > 0 && pbsz <= MAX_PBSZ
+            str = "200- Sorry, just support no buffer specified ('0')"
+          else
+            str = '501- Cannot parse the argument'
+          end
         end
       end
       send_response(str)
@@ -88,10 +80,12 @@ module EM::FTPD
     # * If no previous PBSZ command was issued,the PROT command will be
     #   rejected and the server should reply 503.
     #
-    # * If the server does not understand the specified protection level, it
-    #   should respond with reply code 504.
     # * If the specified protection level is accepted, the server must
     #   reply with a 200 reply code to indicate.
+    # * If the server is not willing to accept the specified protection
+    #   level, it should respond with reply code 534.
+    # * If the server does not understand the specified protection level, it
+    #   should respond with reply code 504.
     #
     def cmd_prot(arg)
       if @tls_state != :pbszed
@@ -100,6 +94,8 @@ module EM::FTPD
         if arg =~ /^p$/i
           @tls_state = :proted
           str = '200- Accept protection level: PRIVATE'
+        elsif arg =~ /^[cse]$/i
+          str = '536- Do not support the specified protected level'
         else
           str = '504- Do not understand specified protected level: #{arg}'
         end
