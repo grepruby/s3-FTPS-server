@@ -1,12 +1,9 @@
-require 'pry'
+require 'eventmachine'
+require 'em-ftpd'
+
 module EM::FTPD
 
-  class Server < EM::Connection
-
-    include EM::Protocols::LineProtocol
-    include Authentication
-    include Directories
-    include Files
+  class Server
 
     COMMANDS.push 'auth', 'feat', 'pbsz', 'prot'
 
@@ -14,8 +11,6 @@ module EM::FTPD
       @tls_state = :none
       @mode   = :binary
       @name_prefix = "/"
-
-      start_tls(:private_key_file => 'ssl/myssl.key', :cert_chain_file => 'ssl/myssl.crt', :verify_peer => false)
 
       send_response "220 FTP server (em-ftpd) ready"
     end
@@ -29,19 +24,16 @@ module EM::FTPD
     #   should respond with reply code 504.
     #
     def cmd_auth(arg)
-      puts "auth args: #{arg}"
       if arg =~ /^tls$/i
         @tls_state = :authed
-        str = "234- Accept security mechanism: TLS"
+        send_response "234 Accept security mechanism: TLS"
+        start_tls(:private_key_file => 'ssl/myssl.key', :cert_chain_file => 'ssl/myssl.crt', :verify_peer => false)
       else
-        str = "504- Do not understand security mechanism: '#{arg}' "
+        send_response "504 Do not understand security mechanism: '#{arg}'"
       end
-      send_response(str)
     end
 
     def cmd_feat(arg)
-      p "======"
-      p arg
       str = "211- Supported features:#{LBRK}"
       features = %w{ AUTH PBSZ PROT }
       features.each do |feat|
@@ -63,21 +55,18 @@ module EM::FTPD
     #
     MAX_PBSZ = 2**32 - 1
     def cmd_pbsz(arg)
-      puts "==test if arg is a Fixnum of String=="
-      puts arg.class
-
       if @tls_state != :authed
-        str = '503- Need AUTH preceded'
+        str = '503 Need AUTH preceded'
       else
         if arg == '0'
           @tls_state = :pbszed
-          str = '200- Success negotiated, no buffering is taking place'
+          str = '200 Success negotiated, no buffering is taking place'
         else
           pbsz = arg.to_i
           if pbsz > 0 && pbsz <= MAX_PBSZ
-            str = "200- Sorry, just support no buffer specified ('0')"
+            str = "200 Sorry, just support no buffer specified ('0')"
           else
-            str = '501- Cannot parse the argument'
+            str = '501 Cannot parse the argument'
           end
         end
       end
@@ -100,15 +89,15 @@ module EM::FTPD
     #
     def cmd_prot(arg)
       if @tls_state != :pbszed
-        str = '503- Need PBSZ preceded'
+        str = '503 Need PBSZ preceded'
       else
         if arg =~ /^p$/i
           @tls_state = :proted
-          str = '200- Accept protection level: PRIVATE'
+          str = '200 Accept protection level: PRIVATE'
         elsif arg =~ /^[cse]$/i
-          str = '536- Do not support the specified protected level'
+          str = '536 Do not support the specified protected level'
         else
-          str = '504- Do not understand specified protected level: #{arg}'
+          str = '504 Do not understand specified protected level: #{arg}'
         end
       end
       send_response(str)
