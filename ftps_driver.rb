@@ -7,6 +7,9 @@
 #
 #   em-ftpd examples/fake.rb
 
+$:.unshift(File.expand_path('../lib/', __FILE__))
+require 's3-FTPS-server'
+
 class FTPSDriver
   FILE_ONE = "This is the first file available for download.\n\nBy James"
   FILE_TWO = "This is the file number two.\n\n2009-03-21"
@@ -85,7 +88,7 @@ end
 
 # configure the server
 driver     FTPSDriver
-# port       7979
+# port       10001
 #driver_args 1, 2, 3
 #user      "ftp"
 #group     "ftp"
