@@ -93,7 +93,8 @@ module EM::FTPD
       else
         if arg =~ /^p$/i
           @tls_state = :proted
-          str = '200 Accept protection level: PRIVATE'
+          # str = '200 Accept protection level: PRIVATE'
+          str = '504 Decline to make non-TLS connection'
         elsif arg =~ /^[cse]$/i
           str = '536 Do not support the specified protected level'
         else
