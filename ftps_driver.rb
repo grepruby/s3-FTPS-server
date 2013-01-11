@@ -39,13 +39,29 @@ class FTPSDriver
   end
 
   def bytes(path, &block)
-    yield case path
+    resp =case path
           when "/one.txt"       then FILE_ONE.size
           when "/files/two.txt" then FILE_TWO.size
           else
             false
           end
+    head_response(resp)
+    yield resp
   end
+
+  def head_response(arg)
+    str = <<HERE
+      HTTP/1.1 200 OK
+      Date: #{Time.now.strftime("%a, %d %b %y %H:%M:%S GMT")}
+      Server: Unix Type: L8
+      Last-Modified: #{}
+      Accept-Ranges: bytes
+      Content-Length: #{}
+      Connection: close
+      Content-Type: #{}
+    HERE
+  end
+
 
   def get_file(path, &block)
     yield case path
