@@ -30,7 +30,12 @@ class FTPSDriver
   end
 
   def authenticate(user, pass, &block)
-    yield user == "test" && pass == "1234"
+    # yield user == "test" && pass == "1234"
+    auth = false
+    File.open('ssl/passwd', 'r').each do |line|
+      auth = true if "#{user}:#{pass}" == line.strip
+    end
+    yield auth
   end
 
   def bytes(path, &block)
