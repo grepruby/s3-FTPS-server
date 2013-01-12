@@ -14,12 +14,49 @@ class FTPSDriver
   FILE_ONE = "This is the first file available for download.\n\nBy James"
   FILE_TWO = "This is the file number two.\n\n2009-03-21"
 
-  def get_amazon_config
-    YAML::load File.read( File.expand_path('../security/amazon_keys.yml', __FILE__) )
+  AWS::S3::DEFAULT_HOST = 's3-ap-northeast-1.amazonaws.com'
+
+  #
+  # OPTIMIZE
+  #
+  def establish_s3_connection
+    begin
+      config = YAML::load File.read( File.expand_path('../security/amazon_keys.yml', __FILE__) )
+      access_key_id = config['access_key_id']
+      secret_access_key = config['secret_access_key']
+      AWS::S3::Base.establish_connection!(
+        :access_key_id     => access_key_id,
+        :secret_access_key => secret_access_key
+      )
+      bucket_name = config['bucket_name']
+      @bucket = AWS::S3::Bucket.find(bucket_name)
+    rescue => e
+      p e
+      # puts 'S3 Service Establish Error, retrying..'
+      retry
+    end
   end
 
+  # def get_amazon_config
+  #   YAML::load File.read( File.expand_path('../security/amazon_keys.yml', __FILE__) )
+  # end
+
   def change_dir(path, &block)
-    yield path == "/" || path == "/files"
+    yield true and return if path == '/'
+
+    res = true
+    path = path[1..-1]
+    path += '/' if !(path =~ /\/$/)
+
+    begin
+      AWS::S3::S3Object.find(path, @bucket.name)
+    rescue => e
+      # AWS::S3::NoSuckKey exception
+      p e
+      res = false
+    end
+
+    yield res
   end
 
   def dir_contents(path, &block)
@@ -113,7 +150,7 @@ end
 
 # configure the server
 driver     FTPSDriver
-# port       10001
+port       10001
 #driver_args 1, 2, 3
 #user      "ftp"
 #group     "ftp"

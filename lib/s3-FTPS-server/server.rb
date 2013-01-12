@@ -8,26 +8,12 @@ module EM::FTPD
 
     COMMANDS.push 'auth', 'feat', 'pbsz', 'prot'
 
-    AWS::S3::DEFAULT_HOST = 's3-ap-northeast-1.amazonaws.com'
-
     def post_init
       @mode   = :binary
       @name_prefix = "/"
 
       @tls_state = :none
-
-      begin
-        config = @driver.get_amazon_config
-        access_key_id = config['access_key_id']
-        secret_access_key = config['secret_access_key']
-        AWS::S3::Base.establish_connection!(
-          :access_key_id     => access_key_id,
-          :secret_access_key => secret_access_key
-        )
-        @service = AWS::S3::Service
-      rescue => e
-        send_response 'S3 Service Establish Error' and return
-      end
+      @driver.establish_s3_connection
 
       send_response "220 FTP server (em-ftpd) ready"
     end

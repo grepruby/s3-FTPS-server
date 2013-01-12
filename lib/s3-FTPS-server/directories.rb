@@ -20,6 +20,21 @@ module EM::FTPD
       end
     end
 
+    # change directory
+    def cmd_cwd(param)
+      send_unauthorised and return unless logged_in?
+      path = build_path(param)
+
+      @driver.change_dir(path) do |result|
+        if result
+          @name_prefix = path
+          send_response "250 Directory changed to #{path}"
+        else
+          send_permission_denied
+        end
+      end
+    end
+
   end
 end
 
