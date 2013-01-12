@@ -14,6 +14,10 @@ class FTPSDriver
   FILE_ONE = "This is the first file available for download.\n\nBy James"
   FILE_TWO = "This is the file number two.\n\n2009-03-21"
 
+  def get_amazon_config
+    YAML::load File.read( File.expand_path('../security/amazon_keys.yml', __FILE__) )
+  end
+
   def change_dir(path, &block)
     yield path == "/" || path == "/files"
   end
