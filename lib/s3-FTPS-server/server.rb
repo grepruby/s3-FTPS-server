@@ -27,7 +27,7 @@ module EM::FTPD
       if arg =~ /^tls$/i
         @tls_state = :authed
         send_response "234 Accept security mechanism: TLS"
-        start_tls(:private_key_file => 'ssl/myssl.key', :cert_chain_file => 'ssl/myssl.crt', :verify_peer => false)
+        start_tls(:private_key_file => 'security/myssl.key', :cert_chain_file => 'security/myssl.crt', :verify_peer => false)
       else
         send_response "504 Do not understand security mechanism: '#{arg}'"
       end

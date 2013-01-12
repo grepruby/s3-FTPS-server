@@ -32,7 +32,7 @@ class FTPSDriver
   def authenticate(user, pass, &block)
     # yield user == "test" && pass == "1234"
     auth = false
-    File.open('ssl/passwd', 'r').each do |line|
+    File.open('security/passwd', 'r').each do |line|
       auth = true if "#{user}:#{pass}" == line.strip
     end
     yield auth
@@ -50,7 +50,7 @@ class FTPSDriver
   end
 
   def head_response(arg)
-    str = <<HERE
+    str = %Q(
       HTTP/1.1 200 OK
       Date: #{Time.now.strftime("%a, %d %b %y %H:%M:%S GMT")}
       Server: Unix Type: L8
@@ -59,7 +59,7 @@ class FTPSDriver
       Content-Length: #{}
       Connection: close
       Content-Type: #{}
-    HERE
+    )
   end
 
 
