@@ -44,10 +44,10 @@ class FTPSDriver
   def change_dir(path, &block)
     yield true and return if path == '/'
 
-    res = true
     path = path[1..-1]
     path += '/' if !(path =~ /\/$/)
 
+    res = true
     begin
       AWS::S3::S3Object.find(path, @bucket.name)
     rescue => e
@@ -59,14 +59,43 @@ class FTPSDriver
     yield res
   end
 
+  def change_to_s3_form(path)
+  end
+
   def dir_contents(path, &block)
-    case path
-    when "/"      then
-      yield [ dir_item("files"), file_item("one.txt", FILE_ONE.bytesize) ]
-    when "/files" then
-      yield [ file_item("two.txt", FILE_TWO.bytesize) ]
+    path = path[1..-1]
+    path += '/' if path != '' && !(path =~ /\/$/)
+
+    objects = AWS::S3::Bucket.objects(@bucket.name, :prefix => path)
+
+    case objects.count
+    when 0
+      yield false
+    when 1
+      object = objects.first
+      if object.about['content-type'] == 'binary/octet-stream'
+        yield []
+      else
+        name = object.key.split('/').last
+        yield [ Item.new(:name => name, :directory => false) ]
+      end
     else
-      yield []
+      res = []
+      objects.shift if path != ''
+      objects.each do |object|
+        key = object.key
+
+        data = key[path.length..-1].split('/')
+
+        next if data.count > 1
+
+        if key =~ /\/$/
+          res << Item.new(:name => data.last, :size => s3_object_size(key), :time => s3_object_time(object), :directory => true)
+        else
+          res << Item.new(:name => data.last, :size => s3_object_size(key), :time => s3_object_time(object), :directory => false)
+        end
+      end
+      yield res
     end
   end
 
@@ -138,12 +167,13 @@ class FTPSDriver
 
   private
 
-  def dir_item(name)
-    EM::FTPD::DirectoryItem.new(:name => name, :directory => true, :size => 0)
+  def s3_object_size(path)
+    objects = AWS::S3::Bucket.objects(@bucket.name, :prefix => path)
+    objects.reduce(0) { |sum, obj| sum += obj.size.to_i }
   end
 
-  def file_item(name, bytes)
-    EM::FTPD::DirectoryItem.new(:name => name, :directory => false, :size => bytes)
+  def s3_object_time(object)
+    object.about['last-modified']
   end
 
 end
