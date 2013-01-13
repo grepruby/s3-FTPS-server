@@ -44,8 +44,7 @@ class FTPSDriver
   def change_dir(path, &block)
     yield true and return if path == '/'
 
-    path = path[1..-1]
-    path += '/' if !(path =~ /\/$/)
+    path = s3_path_wrapper(path)
 
     res = true
     begin
@@ -63,8 +62,7 @@ class FTPSDriver
   end
 
   def dir_contents(path, &block)
-    path = path[1..-1]
-    path += '/' if path != '' && !(path =~ /\/$/)
+    path = s3_path_wrapper(path)
 
     objects = AWS::S3::Bucket.objects(@bucket.name, :prefix => path)
 
@@ -125,23 +123,16 @@ class FTPSDriver
   end
 
   def get_file(path, &block)
-    yield case path
-          when "/one.txt"       then FILE_ONE
-          when "/files/two.txt" then FILE_TWO
-          else
-            false
-          end
+    yield false
   end
 
-  def put_file(path, data, &block)
-    yield false
+  def put_file(path, file_path, &block)
   end
 
   def put_file_streamed
   end
 
   def delete_file(path, &block)
-    yield false
   end
 
   def delete_dir(path, &block)
@@ -175,6 +166,19 @@ class FTPSDriver
       Accept-Ranges: #{about['accept-ranges']}
       Content-Length: #{about['content-length']}
       Content-Type: #{about['content-type']} )
+  end
+
+  #
+  # Dir
+  # '/' => ''
+  # '/empty' => 'empty/'
+  #
+  # File
+  # '/empty/hello.txt' => 'empty/hello.txt'
+  #
+  def s3_path_wrapper(path, dir=true)
+    path = path[1..-1]
+    path += '/' if dir && !path.empty? && !( path =~ /\/$/ )
   end
 
 end

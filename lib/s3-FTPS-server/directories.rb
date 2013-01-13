@@ -9,20 +9,20 @@ module EM::FTPD
       param = '' if param.to_s == '-a'
 
       @driver.dir_contents(build_path(param)) do |files|
-        if !Array === files
+        if !( files.is_a? Array )
           send_response "No such directory or file." and return
         elsif files.count == 0
           return
         end
 
-        now = Time.now
         lines = files.map { |item|
           sizestr = (item.size || 0).to_s.rjust(12)
-          "#{item.directory ? 'd' : '-'}#{item.permissions || 'rwxrwxrwx'} 1 #{item.owner || 'owner'}  #{item.group || 'group'} #{sizestr} #{item.time || Time.now.strftime("%b %d %H:%M")} #{item.name}"
+          # "#{item.directory ? 'd' : '-'}#{item.permissions || 'rwxrwxrwx'} 1 #{item.owner || 'owner'} #{item.group || 'group'} #{sizestr} #{item.time || Time.now.strftime("%b %d %H:%M")} #{item.name}"
+          # TODO: anti-parse the time
+          "#{item.directory ? 'd' : '-'}#{item.permissions || 'rwxrwxrwx'} 1 #{item.owner || 'owner'} #{item.group || 'group'} #{sizestr} #{Time.now.strftime("%b %d %H:%M")} #{item.name}"
         }
+        # lines.each { |line| send_response line }
         send_outofband_data(lines)
-
-        lines.each { |line| send_response line }
       end
     end
 
