@@ -109,29 +109,20 @@ class FTPSDriver
   end
 
   def bytes(path, &block)
-    resp =case path
-          when "/one.txt"       then FILE_ONE.size
-          when "/files/two.txt" then FILE_TWO.size
-          else
-            false
-          end
-    head_response(resp)
-    yield resp
+    path = path[1..-1] if path =~ /^\//
+    begin
+      obj = AWS::S3::S3Object.find(path, @bucket.name)
+      res = obj.about
+      if res['content-type'] == 'binary/octet-stream'
+        yield '0'
+      else
+        yield head_response(res)
+      end
+    rescue => e
+      # NoSuchKey exception
+      yield false
+    end
   end
-
-  def head_response(arg)
-    str = %Q(
-      HTTP/1.1 200 OK
-      Date: #{Time.now.strftime("%a, %d %b %y %H:%M:%S GMT")}
-      Server: Unix Type: L8
-      Last-Modified: #{}
-      Accept-Ranges: bytes
-      Content-Length: #{}
-      Connection: close
-      Content-Type: #{}
-    )
-  end
-
 
   def get_file(path, &block)
     yield case path
@@ -174,6 +165,16 @@ class FTPSDriver
 
   def s3_object_time(object)
     object.about['last-modified']
+  end
+
+  def head_response(about)
+    str = %Q( HTTP/1.1 OK
+      Date: #{Time.now.strftime("%a, %d %b %y %H:%M:%S GMT")}
+      Server: #{about['server']}
+      Last-Modified: #{about['last-modified']}
+      Accept-Ranges: #{about['accept-ranges']}
+      Content-Length: #{about['content-length']}
+      Content-Type: #{about['content-type']} )
   end
 
 end
