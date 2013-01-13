@@ -7,6 +7,7 @@ module EM::FTPD
   class Server
 
     COMMANDS.push 'auth', 'feat', 'pbsz', 'prot'
+    attr_accessor :driver
 
     def post_init
       @mode   = :binary

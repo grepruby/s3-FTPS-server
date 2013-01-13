@@ -136,13 +136,21 @@ class FTPSDriver
 
   def put_file(path, file_path, &block)
     path = s3_path_wrapper(path)
+    file = open(file_path)
 
-    @aws_object.store(path, open(file_path), @bucket.name)
+    AWS::S3::S3Object.store(path, file.read, @bucket.name)
 
     yield File.size(file_path)
   end
 
-  def put_file_streamed
+  def puts_file_streamed(path, datasocket, &block)
+    path = s3_path_wrapper(path)
+
+    streamer = EM::FTPD::IOStreamer.new(datasocket, nil)
+
+    AWS::S3::S3Object.store(path, streamer, @bucket.name)
+
+    yield streamer.bytes_streamed
   end
 
   def delete_file(path, &block)
@@ -169,6 +177,20 @@ class FTPSDriver
 
   def make_dir(path, &block)
     yield false
+  end
+
+  def get_temp_file
+    if File.exist? 'tmp'
+      File.open('tmp', 'a+')
+    else
+      File.new('tmp', 'a+')
+    end
+  end
+
+  def clear_temp_file
+    get_temp_file.close
+    file = File.new('tmp', 'w')
+    file.close
   end
 
   private
@@ -203,13 +225,14 @@ class FTPSDriver
   def s3_path_wrapper(path, dir=true)
     path = path[1..-1]
     path += '/' if dir && !path.empty? && !( path =~ /\/$/ )
+    path.to_s
   end
 
 end
 
 # configure the server
 driver     FTPSDriver
-port       10001
+# port       10001
 #driver_args 1, 2, 3
 #user      "ftp"
 #group     "ftp"
