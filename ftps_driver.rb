@@ -107,7 +107,7 @@ class FTPSDriver
   end
 
   def bytes(path, &block)
-    path = path[1..-1] if path =~ /^\//
+    path = s3_path_wrapper(path)
     begin
       obj = AWS::S3::S3Object.find(path, @bucket.name)
       res = obj.about
@@ -123,19 +123,43 @@ class FTPSDriver
   end
 
   def get_file(path, &block)
+    path = s3_path_wrapper(path, dir=false)
+
+    if !path.empty? && obj=AWS::S3::S3Object.find(path, @bucket.name)
+      if obj.about['content-type'] != 'binary/octet-stream'
+        yeild obj.value
+      end
+    end
+
     yield false
   end
 
   def put_file(path, file_path, &block)
+    path = s3_path_wrapper(path)
+
+    @aws_object.store(path, open(file_path), @bucket.name)
+
+    yield File.size(file_path)
   end
 
   def put_file_streamed
   end
 
   def delete_file(path, &block)
+    path = s3_path_wrapper(path)
+
+    begin
+      AWS::S3::S3Object.delete(path, @bucket.name)
+      yield true
+    rescue => e
+      yield false
+    end
   end
 
   def delete_dir(path, &block)
+    path = s3_path_wrapper(path)
+
+    # TODO
     yield false
   end
 
