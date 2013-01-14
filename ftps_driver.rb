@@ -11,8 +11,6 @@ $:.unshift(File.expand_path('../lib/', __FILE__))
 require 's3-FTPS-server'
 
 class FTPSDriver
-  FILE_ONE = "This is the first file available for download.\n\nBy James"
-  FILE_TWO = "This is the file number two.\n\n2009-03-21"
 
   AWS::S3::DEFAULT_HOST = 's3-ap-northeast-1.amazonaws.com'
 
@@ -56,9 +54,6 @@ class FTPSDriver
     end
 
     yield res
-  end
-
-  def change_to_s3_form(path)
   end
 
   def dir_contents(path, &block)
@@ -143,14 +138,12 @@ class FTPSDriver
     yield File.size(file_path)
   end
 
-  def puts_file_streamed(path, datasocket, &block)
+  def puts_file_streamed(path, file_path, &block)
     path = s3_path_wrapper(path)
 
-    streamer = EM::FTPD::IOStreamer.new(datasocket, nil)
+    AWS::S3::S3Object.store(path, open(file_path), @bucket.name)
 
-    AWS::S3::S3Object.store(path, streamer, @bucket.name)
-
-    yield streamer.bytes_streamed
+    yield File.size(file_path)
   end
 
   def delete_file(path, &block)
@@ -167,30 +160,21 @@ class FTPSDriver
   def delete_dir(path, &block)
     path = s3_path_wrapper(path)
 
-    # TODO
-    yield false
+    objects = AWS::S3::Bucket.objects(@bucket.name, :prefix => path)
+
+    begin
+      objects.each { |obj| AWS::S3::S3Object.delete(obj.key, @bucket.name) }
+      yield true
+    rescue => e
+      yield false
+    end
   end
 
   def rename(from, to, &block)
-    yield false
   end
 
   def make_dir(path, &block)
     yield false
-  end
-
-  def get_temp_file
-    if File.exist? 'tmp'
-      File.open('tmp', 'a+')
-    else
-      File.new('tmp', 'a+')
-    end
-  end
-
-  def clear_temp_file
-    get_temp_file.close
-    file = File.new('tmp', 'w')
-    file.close
   end
 
   private
