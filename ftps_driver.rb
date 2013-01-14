@@ -171,10 +171,32 @@ class FTPSDriver
   end
 
   def rename(from, to, &block)
+    from = s3_path_wrapper(from)
+    to = s3_path_wrapper(to)
+
+    begin
+      AWS::S3::S3Object.rename(from, to, @bucket.name)
+      yield true
+    rescue => e
+      yield false
+    end
+
   end
 
   def make_dir(path, &block)
-    yield false
+    path = s3_path_wrapper(path)
+
+    begin
+      AWS::S3::S3Object.store(
+        path,
+        '',
+        @bucket.name,
+        :content_type => 'binary/octet-stream'
+      )
+      yield true
+    rescue => e
+      yield false
+    end
   end
 
   private
