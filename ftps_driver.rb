@@ -35,6 +35,33 @@ class FTPSDriver
     end
   end
 
+  def initialize(mode=nil)
+    if mode == :test
+      AWS::S3::Base.establish_connection!(:access_key_id => "123",
+                                          :secret_access_key => "abc",
+                                          :server => "localhost",
+                                          :port => "10453" )
+      AWS::S3::Bucket.create('wendi-test')
+      @bucket = AWS::S3::Bucket.find('wendi-test')
+    else
+      begin
+        config = YAML::load File.read( File.expand_path('../security/amazon_keys.yml', __FILE__) )
+        access_key_id = config['access_key_id']
+        secret_access_key = config['secret_access_key']
+        AWS::S3::Base.establish_connection!(
+          :access_key_id     => access_key_id,
+          :secret_access_key => secret_access_key
+        )
+        bucket_name = config['bucket_name']
+        @bucket = AWS::S3::Bucket.find(bucket_name)
+      rescue => e
+        p e
+        # puts 'S3 Service Establish Error, retrying..'
+        retry
+      end
+    end
+  end
+
   # def get_amazon_config
   #   YAML::load File.read( File.expand_path('../security/amazon_keys.yml', __FILE__) )
   # end
@@ -70,7 +97,7 @@ class FTPSDriver
         yield []
       else
         name = object.key.split('/').last
-        yield [ Item.new(:name => name, :directory => false) ]
+        yield [ EM::FTPD::Item.new(:name => name, :directory => false) ]
       end
     else
       res = []
@@ -83,9 +110,9 @@ class FTPSDriver
         next if data.count > 1
 
         if key =~ /\/$/
-          res << Item.new(:name => data.last, :size => s3_object_size(key), :time => s3_object_time(object), :directory => true)
+          res << EM::FTPD::Item.new(:name => data.last, :size => s3_object_size(key), :time => s3_object_time(object), :directory => true)
         else
-          res << Item.new(:name => data.last, :size => s3_object_size(key), :time => s3_object_time(object), :directory => false)
+          res << EM::FTPD::Item.new(:name => data.last, :size => s3_object_size(key), :time => s3_object_time(object), :directory => false)
         end
       end
       yield res
