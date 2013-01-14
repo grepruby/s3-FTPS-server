@@ -1,4 +1,7 @@
 source 'http://rubygems.org'
 
-gem 'em-ftpd', '0.0.1'
-gem 'aws-s3', '0.6.2'
+gem 'em-ftpd'
+gem 'aws-s3'
+gem 'fakes3'
+gem 'rspec'
+gem 'cucumber'
