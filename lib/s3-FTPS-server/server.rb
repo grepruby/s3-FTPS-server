@@ -13,7 +13,7 @@ module EM::FTPD
       @name_prefix = "/"
 
       @tls_state = :none
-      @driver.establish_s3_connection
+      # @driver.establish_s3_connection
 
       send_response "220 FTP server (em-ftpd) ready"
     end
