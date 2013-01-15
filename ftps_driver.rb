@@ -11,29 +11,10 @@ $:.unshift(File.expand_path('../lib/', __FILE__))
 require 's3-FTPS-server'
 
 class FTPSDriver
+  FILE_ONE = "This is the first file available for download.\n\nBy James"
+  FILE_TWO = "This is the file number two.\n\n2009-03-21"
 
   AWS::S3::DEFAULT_HOST = 's3-ap-northeast-1.amazonaws.com'
-
-  #
-  # OPTIMIZE
-  #
-  def establish_s3_connection
-    begin
-      config = YAML::load File.read( File.expand_path('../security/amazon_keys.yml', __FILE__) )
-      access_key_id = config['access_key_id']
-      secret_access_key = config['secret_access_key']
-      AWS::S3::Base.establish_connection!(
-        :access_key_id     => access_key_id,
-        :secret_access_key => secret_access_key
-      )
-      bucket_name = config['bucket_name']
-      @bucket = AWS::S3::Bucket.find(bucket_name)
-    rescue => e
-      p e
-      # puts 'S3 Service Establish Error, retrying..'
-      retry
-    end
-  end
 
   def initialize(mode=nil)
     if mode == :test
@@ -43,6 +24,8 @@ class FTPSDriver
                                           :port => "10453" )
       AWS::S3::Bucket.create('wendi-test')
       @bucket = AWS::S3::Bucket.find('wendi-test')
+      AWS::S3::S3Object.store('one.txt', FILE_ONE, @bucket.name)
+      AWS::S3::S3Object.store('files/two.txt', FILE_TWO, @bucket.name)
     else
       begin
         config = YAML::load File.read( File.expand_path('../security/amazon_keys.yml', __FILE__) )
@@ -149,7 +132,7 @@ class FTPSDriver
 
     if !path.empty? && obj=AWS::S3::S3Object.find(path, @bucket.name)
       if obj.about['content-type'] != 'binary/octet-stream'
-        yeild obj.value
+        yield obj.value
       end
     end
 

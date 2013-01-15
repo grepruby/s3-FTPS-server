@@ -8,6 +8,8 @@ module EM::FTPD
 
     COMMANDS.push 'auth', 'feat', 'pbsz', 'prot'
 
+    attr_accessor :tls_state
+
     def post_init
       @mode   = :binary
       @name_prefix = "/"
@@ -67,7 +69,7 @@ module EM::FTPD
         else
           pbsz = arg.to_i
           if pbsz > 0 && pbsz <= MAX_PBSZ
-            str = "200 Sorry, just support no buffer specified ('0')"
+            str = "200 Failed, just support no buffer specified ('0')"
           else
             str = '501 Cannot parse the argument'
           end
