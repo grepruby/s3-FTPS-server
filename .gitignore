@@ -13,4 +13,6 @@ TAGS
 tags
 !tags/
 
-
+vendor/
+bin/
+tmp
