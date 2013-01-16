@@ -24,7 +24,7 @@ module EM::FTPD
               send_action_not_taken
             end
           end
-          tmp.unlink
+          tmpfile.unlink
         }
         datasocket.errback {
           tmpfile.unlink

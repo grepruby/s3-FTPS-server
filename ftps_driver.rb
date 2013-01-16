@@ -18,14 +18,16 @@ class FTPSDriver
 
   def initialize(mode=nil)
     if mode == :test
+      $mode = :test
       AWS::S3::Base.establish_connection!(:access_key_id => "123",
                                           :secret_access_key => "abc",
                                           :server => "localhost",
                                           :port => "10453" )
-      AWS::S3::Bucket.create('wendi-test')
-      @bucket = AWS::S3::Bucket.find('wendi-test')
-      AWS::S3::S3Object.store('one.txt', FILE_ONE, @bucket.name)
-      AWS::S3::S3Object.store('files/two.txt', FILE_TWO, @bucket.name)
+      @bucket_name = 'wendi-test'
+      AWS::S3::Bucket.create(@bucket_name)
+      AWS::S3::S3Object.store('one.txt', FILE_ONE, @bucket_name)
+      AWS::S3::S3Object.store("files", '', @bucket_name, :content_type => 'binary/octet-stream')
+      AWS::S3::S3Object.store('files/two.txt', FILE_TWO, @bucket_name)
     else
       begin
         config = YAML::load File.read( File.expand_path('../security/amazon_keys.yml', __FILE__) )
@@ -35,8 +37,7 @@ class FTPSDriver
           :access_key_id     => access_key_id,
           :secret_access_key => secret_access_key
         )
-        bucket_name = config['bucket_name']
-        @bucket = AWS::S3::Bucket.find(bucket_name)
+        @bucket_name = config['bucket_name']
       rescue => e
         p e
         # puts 'S3 Service Establish Error, retrying..'
@@ -56,7 +57,7 @@ class FTPSDriver
 
     res = true
     begin
-      AWS::S3::S3Object.find(path, @bucket.name)
+      AWS::S3::S3Object.find(path, @bucket_name)
     rescue => e
       # AWS::S3::NoSuckKey exception
       p e
@@ -69,7 +70,7 @@ class FTPSDriver
   def dir_contents(path, &block)
     path = s3_path_wrapper(path)
 
-    objects = AWS::S3::Bucket.objects(@bucket.name, :prefix => path)
+    objects = AWS::S3::Bucket.objects(@bucket_name, :prefix => path)
 
     case objects.count
     when 0
@@ -90,6 +91,7 @@ class FTPSDriver
 
         data = key[path.length..-1].split('/')
 
+        data.shift if data.first == ''
         next if data.count > 1
 
         if key =~ /\/$/
@@ -114,7 +116,7 @@ class FTPSDriver
   def bytes(path, &block)
     path = s3_path_wrapper(path)
     begin
-      obj = AWS::S3::S3Object.find(path, @bucket.name)
+      obj = AWS::S3::S3Object.find(path, @bucket_name)
       res = obj.about
       if res['content-type'] == 'binary/octet-stream'
         yield '0'
@@ -130,28 +132,31 @@ class FTPSDriver
   def get_file(path, &block)
     path = s3_path_wrapper(path, dir=false)
 
-    if !path.empty? && obj=AWS::S3::S3Object.find(path, @bucket.name)
-      if obj.about['content-type'] != 'binary/octet-stream'
-        yield obj.value
+    begin
+      if !path.empty? && obj=AWS::S3::S3Object.find(path, @bucket_name)
+        if obj.about['content-type'] != 'binary/octet-stream'
+          yield obj.value and return
+        end
       end
+    rescue => e
+      # NoSuchKey exception
+      yield false
     end
-
-    yield false
   end
 
   def put_file(path, file_path, &block)
     path = s3_path_wrapper(path)
     file = open(file_path)
 
-    AWS::S3::S3Object.store(path, file.read, @bucket.name)
+    AWS::S3::S3Object.store(path, file.read, @bucket_name)
 
     yield File.size(file_path)
   end
 
-  def puts_file_streamed(path, file_path, &block)
+  def put_file_streamed(path, file_path, &block)
     path = s3_path_wrapper(path)
 
-    AWS::S3::S3Object.store(path, open(file_path), @bucket.name)
+    AWS::S3::S3Object.store(path, open(file_path), @bucket_name)
 
     yield File.size(file_path)
   end
@@ -160,7 +165,8 @@ class FTPSDriver
     path = s3_path_wrapper(path)
 
     begin
-      AWS::S3::S3Object.delete(path, @bucket.name)
+      AWS::S3::S3Object.find(path, @bucket_name)
+      AWS::S3::S3Object.delete(path, @bucket_name)
       yield true
     rescue => e
       yield false
@@ -170,10 +176,10 @@ class FTPSDriver
   def delete_dir(path, &block)
     path = s3_path_wrapper(path)
 
-    objects = AWS::S3::Bucket.objects(@bucket.name, :prefix => path)
+    objects = AWS::S3::Bucket.objects(@bucket_name, :prefix => path)
 
     begin
-      objects.each { |obj| AWS::S3::S3Object.delete(obj.key, @bucket.name) }
+      objects.each { |obj| AWS::S3::S3Object.delete(obj.key, @bucket_name) }
       yield true
     rescue => e
       yield false
@@ -185,7 +191,8 @@ class FTPSDriver
     to = s3_path_wrapper(to)
 
     begin
-      AWS::S3::S3Object.rename(from, to, @bucket.name)
+      AWS::S3::S3Object.find(from, @bucket_name)
+      AWS::S3::S3Object.rename(from, to, @bucket_name)
       yield true
     rescue => e
       yield false
@@ -197,10 +204,16 @@ class FTPSDriver
     path = s3_path_wrapper(path)
 
     begin
+      AWS::S3::S3Object.find(path, @bucket_name)
+      yield false and return
+    rescue => e
+    end
+
+    begin
       AWS::S3::S3Object.store(
         path,
         '',
-        @bucket.name,
+        @bucket_name,
         :content_type => 'binary/octet-stream'
       )
       yield true
@@ -212,8 +225,9 @@ class FTPSDriver
   private
 
   def s3_object_size(path)
-    objects = AWS::S3::Bucket.objects(@bucket.name, :prefix => path)
-    objects.reduce(0) { |sum, obj| sum += obj.size.to_i }
+    objects = AWS::S3::Bucket.objects(@bucket_name, :prefix => path)
+    # objects.reduce(0) { |sum, obj| sum += obj.size.to_i }
+    objects.reduce(0) { |sum, obj| sum += obj.value.size }
   end
 
   def s3_object_time(object)
@@ -241,6 +255,12 @@ class FTPSDriver
   def s3_path_wrapper(path, dir=true)
     path = path[1..-1]
     path += '/' if dir && !path.empty? && !( path =~ /\/$/ )
+    # different in fake-s3
+    if $mode == :test
+      while path =~ /\/$/
+        path = path[0..-2]
+      end
+    end
     path.to_s
   end
 
