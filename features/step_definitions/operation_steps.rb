@@ -42,7 +42,7 @@ Then /^Server should respond with (\d+) when called in the root dir with no para
   timestr = Time.now.strftime("%b %d %H:%M")
   root_files =
     [
-      "-rwxrwxrwx 1 wendi workgroup           40 #{timestr} files",
+      "-rwxrwxrwx 1 wendi workgroup            0 #{timestr} files",
       "-rwxrwxrwx 1 wendi workgroup           56 #{timestr} one.txt"
     ]
   @c.sent_data.should match(/150.+/m)

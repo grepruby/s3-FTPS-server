@@ -280,14 +280,14 @@ describe 's3-FTPS-server' do
       let!(:root_files) {
         timestr = Time.now.strftime("%b %d %H:%M")
         [
-          "-rwxrwxrwx 1 wendi workgroup           40 #{timestr} files",
+          "-rwxrwxrwx 1 wendi workgroup            0 #{timestr} files",
           "-rwxrwxrwx 1 wendi workgroup           56 #{timestr} one.txt"
         ]
       }
       let!(:dir_files) {
         timestr = Time.now.strftime("%b %d %H:%M")
         [
-          "-rwxrwxrwx 1 wendi workgroup           40 #{timestr} two.txt"
+          "drwxrwxrwx 1 wendi workgroup            0 #{timestr} /two.txt"
         ]
       }
 
@@ -301,6 +301,7 @@ describe 's3-FTPS-server' do
         @c.reset_sent!
         @c.receive_line("LIST")
         @c.sent_data.should match(/150.+/m)
+        @c.reset_sent!
         @c.oobdata.split(EM::FTPD::Server::LBRK).should eql(root_files)
       end
 
@@ -357,7 +358,6 @@ describe 's3-FTPS-server' do
       end
 
       it "should respond with 257 when the directory is created" do
-        @c.receive_line("DELE four")
         @c.receive_line("MKD four")
         @c.sent_data.should match(/257.+/)
         @c.receive_line("DELE four")

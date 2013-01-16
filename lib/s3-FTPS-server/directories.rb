@@ -9,11 +9,7 @@ module EM::FTPD
       param = '' if param.to_s == '-a'
 
       @driver.dir_contents(build_path(param)) do |files|
-        if !( files.is_a? Array )
-          send_response "No such directory or file." and return
-        elsif files.count == 0
-          return
-        end
+        send_response "No such directory." and return if !( files.is_a? Array )
 
         lines = files.map { |item|
           sizestr = (item.size || 0).to_s.rjust(12)
@@ -21,7 +17,7 @@ module EM::FTPD
           # TODO: anti-parse the time
           "#{item.directory ? 'd' : '-'}#{item.permissions || 'rwxrwxrwx'} 1 #{item.owner || 'owner'} #{item.group || 'group'} #{sizestr} #{Time.now.strftime("%b %d %H:%M")} #{item.name}"
         }
-        # lines.each { |line| send_response line }
+        lines = [''] if files.count == 0
         send_outofband_data(lines)
       end
     end
